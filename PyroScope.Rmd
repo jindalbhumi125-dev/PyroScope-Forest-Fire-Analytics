@@ -1,0 +1,309 @@
+
+---
+title: "PyroScope - Forest Fire Analytics"
+author: "MCA Student"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: readable
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(knitr)
+library(corrplot)
+```
+
+# 1. Introduction
+
+PyroScope is a forest fire data analysis project developed using R.
+It explores forest fire patterns, weather conditions, fire occurrence,
+and the burned area using statistical analysis and visualizations.
+
+# 2. Load the Dataset
+
+```{r load-data}
+forest_data <- read.csv(
+  "C:/Users/BHUMI/OneDrive/Documents/rpackage/forestfires.csv"
+)
+
+cat("Dataset loaded successfully!\n")
+cat("Number of records:", nrow(forest_data), "\n")
+cat("Number of columns:", ncol(forest_data), "\n")
+
+head(forest_data)
+```
+
+# 3. Dataset Structure
+
+```{r structure}
+str(forest_data)
+summary(forest_data)
+```
+
+# Statistical Summary
+
+This section presents descriptive statistics for the numerical variables in the forest fire dataset.
+
+```{r statistical-summary}
+numeric_data <- forest_data %>%
+  select(where(is.numeric))
+
+statistical_summary <- data.frame(
+  Variable = names(numeric_data),
+  Mean = sapply(numeric_data, function(x) mean(x, na.rm = TRUE)),
+  Median = sapply(numeric_data, function(x) median(x, na.rm = TRUE)),
+  Standard_Deviation = sapply(numeric_data, function(x) sd(x, na.rm = TRUE)),
+  Minimum = sapply(numeric_data, function(x) min(x, na.rm = TRUE)),
+  Maximum = sapply(numeric_data, function(x) max(x, na.rm = TRUE))
+)
+
+knitr::kable(
+  statistical_summary,
+  digits = 2,
+  caption = "Descriptive Statistics of Forest Fire Variables"
+)
+```
+
+
+# 4. Check Missing Values
+
+```{r missing-values}
+missing_values <- colSums(is.na(forest_data))
+
+knitr::kable(
+  data.frame(
+    Column = names(missing_values),
+    Missing_Values = as.integer(missing_values)
+  ),
+  caption = "Missing Values in Each Column"
+)
+```
+
+# 5. Forest Fire Occurrences by Month
+
+```{r monthly-count}
+monthly_fires <- forest_data %>%
+  count(month, name = "Fire_Count") %>%
+  mutate(
+    month = factor(
+      month,
+      levels = c("jan", "feb", "mar", "apr", "may", "jun",
+                 "jul", "aug", "sep", "oct", "nov", "dec")
+    )
+  ) %>%
+  arrange(month)
+
+knitr::kable(monthly_fires, caption = "Forest Fire Records by Month")
+
+ggplot(monthly_fires, aes(x = month, y = Fire_Count)) +
+  geom_col(fill = "darkorange") +
+  labs(
+    title = "Forest Fire Records by Month",
+    x = "Month",
+    y = "Number of Records"
+  ) +
+  theme_minimal()
+```
+
+# 6. Forest Fire Occurrences by Day
+
+```{r daily-count}
+daily_fires <- forest_data %>%
+  count(day, name = "Fire_Count")
+
+ggplot(daily_fires, aes(x = day, y = Fire_Count)) +
+  geom_col(fill = "steelblue") +
+  labs(
+    title = "Forest Fire Records by Day of Week",
+    x = "Day",
+    y = "Number of Records"
+  ) +
+  theme_minimal()
+```
+
+# 7. Distribution of Burned Area
+
+```{r burned-area}
+ggplot(forest_data, aes(x = area)) +
+  geom_histogram(bins = 30, fill = "tomato", color = "white") +
+  labs(
+    title = "Distribution of Forest Area Burned",
+    x = "Burned Area (hectares)",
+    y = "Frequency"
+  ) +
+  theme_minimal()
+
+summary(forest_data$area)
+```
+
+# 8. Temperature and Relative Humidity
+
+```{r weather-analysis}
+ggplot(forest_data, aes(x = temp, y = RH)) +
+  geom_point(color = "darkgreen", alpha = 0.65) +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(
+    title = "Temperature vs Relative Humidity",
+    x = "Temperature",
+    y = "Relative Humidity (%)"
+  ) +
+  theme_minimal()
+```
+
+# 9. Wind Speed and Temperature
+
+```{r wind-temperature}
+ggplot(forest_data, aes(x = wind, y = temp)) +
+  geom_point(color = "purple", alpha = 0.65) +
+  labs(
+    title = "Wind Speed vs Temperature",
+    x = "Wind Speed",
+    y = "Temperature"
+  ) +
+  theme_minimal()
+```
+
+# 10. Average Weather Conditions by Month
+
+```{r monthly-weather}
+monthly_weather <- forest_data %>%
+  group_by(month) %>%
+  summarise(
+    Average_Temperature = mean(temp, na.rm = TRUE),
+    Average_Humidity = mean(RH, na.rm = TRUE),
+    Average_Wind = mean(wind, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+knitr::kable(
+  monthly_weather,
+  digits = 2,
+  caption = "Average Weather Conditions by Month"
+)
+```
+
+# 11. Correlation Analysis
+
+```{r correlation, fig.width=8, fig.height=7}
+numeric_data <- forest_data %>%
+  select(where(is.numeric))
+
+correlation_matrix <- cor(numeric_data, use = "complete.obs")
+
+corrplot(
+  correlation_matrix,
+  method = "color",
+  type = "upper",
+  tl.cex = 0.7,
+  title = "Correlation Between Numeric Variables",
+  mar = c(0, 0, 2, 0)
+)
+```
+
+# 12. Records with the Largest Burned Areas
+
+```{r largest-fires}
+largest_fires <- forest_data %>%
+  arrange(desc(area)) %>%
+  select(month, day, temp, RH, wind, area) %>%
+  head(10)
+
+knitr::kable(
+  largest_fires,
+  digits = 2,
+  caption = "Top 10 Records by Burned Area"
+)
+```
+
+# 13. Key Findings
+
+```{r findings, results='asis'}
+cat("- The dataset contains", nrow(forest_data), "forest fire records.\n\n")
+cat("- It contains", ncol(forest_data), "variables for analysis.\n\n")
+cat("- The burned-area distribution shows how fire sizes vary across records.\n\n")
+cat("- Monthly and daily charts help compare recorded fire occurrences.\n\n")
+cat("- Weather plots and correlation analysis help explore relationships between variables.\n\n")
+```
+
+# 14. Conclusion
+
+PyroScope demonstrates how R can be used to analyze forest fire data through
+data preparation, descriptive statistics, visualizations, and correlation
+analysis. The results can help identify patterns in the recorded data.
+However, observed relationships do not by themselves establish the causes
+of forest fires or predict future events.
+
+
+# Insights and Key Observations
+
+This section presents important observations discovered through
+statistical analysis of the forest fire dataset.
+
+```{r project-insights}
+# 1. Overall fire and burned-area statistics
+total_records <- nrow(forest_data)
+zero_area_fires <- sum(forest_data$area == 0, na.rm = TRUE)
+positive_area_fires <- sum(forest_data$area > 0, na.rm = TRUE)
+
+cat("1. DATASET OVERVIEW\n")
+cat("-------------------\n")
+cat("Total fire records:", total_records, "\n")
+cat("Records with zero recorded burned area:", zero_area_fires, "\n")
+cat("Records with positive burned area:", positive_area_fires, "\n\n")
+
+# 2. Month with the most recorded fires
+fire_by_month <- forest_data %>%
+  count(month, name = "Fire_Records") %>%
+  arrange(desc(Fire_Records))
+
+cat("2. MONTHLY FIRE PATTERN\n")
+cat("-----------------------\n")
+cat("Month with the most recorded fire observations:",
+    as.character(fire_by_month$month[1]), "\n")
+cat("Number of observations in that month:",
+    fire_by_month$Fire_Records[1], "\n\n")
+
+# 3. Distribution of burned area
+cat("3. BURNED-AREA DISTRIBUTION\n")
+cat("---------------------------\n")
+cat("Mean burned area:", round(mean(forest_data$area, na.rm = TRUE), 2), "\n")
+cat("Median burned area:", round(median(forest_data$area, na.rm = TRUE), 2), "\n")
+cat("Largest recorded burned area:", round(max(forest_data$area, na.rm = TRUE), 2), "\n")
+
+if (mean(forest_data$area, na.rm = TRUE) >
+    median(forest_data$area, na.rm = TRUE)) {
+  cat("Observation: The mean exceeds the median, suggesting that larger fire events may influence the average.\n\n")
+} else {
+  cat("Observation: The mean does not exceed the median in this dataset.\n\n")
+}
+
+# 4. Weather variable correlations with burned area
+cat("4. CORRELATION WITH BURNED AREA\n")
+cat("--------------------------------\n")
+
+weather_variables <- c("temp", "RH", "wind", "rain")
+
+for (variable in weather_variables) {
+  correlation_value <- cor(
+    forest_data[[variable]],
+    forest_data$area,
+    use = "complete.obs"
+  )
+
+  cat(
+    variable, "vs burned area:",
+    round(correlation_value, 3), "\n"
+  )
+}
+
+cat("\nNote: Correlation shows association, not proof of cause and effect.\n")
+```
+
+
