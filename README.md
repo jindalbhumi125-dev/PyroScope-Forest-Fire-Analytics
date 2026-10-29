@@ -73,6 +73,11 @@ This project explores historical observations. Correlation does not establish ca
 ## Author
 
 MCA Student Project
+
+## Project Report
+
+[View PyroScope Project Report (PDF)](Bhumi_PyroScope_Project_Report.pdf)
+
 BHUMI
 
 
